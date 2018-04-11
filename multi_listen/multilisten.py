@@ -15,6 +15,7 @@ import io
 import socket
 import subprocess
 import argparse
+import http.client
 
 ROOMS = '';
 USERS = '';
@@ -219,6 +220,8 @@ class Room():
             log.warning('{} donwloading timeout'.format(self.nId));
         except ConnectionResetError as e:
             log.warning('downloading reset: {}'.format(e));
+        except http.client.IncompleteRead as e:
+            log.warning('downloading break:{}'.format(e));
         finally:
             if ('res' in locals()): res.close();
             if ('f1' in locals()): f1.close();
@@ -303,6 +306,23 @@ def doDownload(room):
             if (isSuccess):
                 log.info('{} downloaded to {}'.format(room.nId, sPath));
                 try:
+                    jishu=0;
+                    while True:
+                        wait(0.5);
+                        os.system('rclone move "{}" milo:milo/b'.format(sPath));
+                        if(not exists(sPath)):
+                            log.info('{}存储成功..'.format(sName));
+                            break;
+                        else:
+                            if(jishu>=10):
+                                print('重试多次失败，请手动检查');
+                                with open('/root/names.txt','a') as f:
+                                    f.writelines(sName);
+                                    f.close;
+                                    break;
+                            jishu+=1;
+                            print('存储失败，重新存储..\n')
+                            
                     doCleanup(room, sPath);
                 except Exception as e:
                     if (sLogDir):
@@ -321,6 +341,8 @@ def doDownload(room):
     room._stream.seek(0);
     room._stream.truncate();
     log.info('{} download thread ended'.format(room.nId));
+    #os.system('rclone move {} milo:milo/b'.format(sDir));
+
     return True;
 
 def synMonitor(aIds=None, aUsers=None):
